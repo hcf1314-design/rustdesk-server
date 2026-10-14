@@ -1,0 +1,48 @@
+name: build-kx
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build musl amd64 (kx)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install musl toolchain and build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools pkg-config perl make
+
+      - name: Install rust target
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add x86_64-unknown-linux-musl
+
+      - name: Build
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          OPENSSL_STATIC: '1'
+          OPENSSL_LIB_DIR: ''
+          OPENSSL_INCLUDE_DIR: ''
+        run: |
+          cargo build --release --all-features --target x86_64-unknown-linux-musl
+        continue-on-error: false
+
+      - name: Chmod
+        run: chmod -v a+x target/x86_64-unknown-linux-musl/release/hbbs target/x86_64-unknown-linux-musl/release/hbbr target/x86_64-unknown-linux-musl/release/rustdesk-utils
+
+      - name: Publish Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-linux-amd64
+          path: |
+            target/x86_64-unknown-linux-musl/release/hbbr
+            target/x86_64-unknown-linux-musl/release/hbbs
+            target/x86_64-unknown-linux-musl/release/rustdesk-utils
+          if-no-files-found: error
