@@ -16,7 +16,7 @@ jobs:
       - name: Install musl toolchain and build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y musl-tools pkg-config perl make
+          sudo apt-get install -y musl-tools pkg-config perl make libssl-dev
 
       - name: Install rust target
         run: |
@@ -28,11 +28,8 @@ jobs:
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
           OPENSSL_STATIC: '1'
-          OPENSSL_LIB_DIR: ''
-          OPENSSL_INCLUDE_DIR: ''
         run: |
           cargo build --release --all-features --target x86_64-unknown-linux-musl
-        continue-on-error: false
 
       - name: Chmod
         run: chmod -v a+x target/x86_64-unknown-linux-musl/release/hbbs target/x86_64-unknown-linux-musl/release/hbbr target/x86_64-unknown-linux-musl/release/rustdesk-utils
