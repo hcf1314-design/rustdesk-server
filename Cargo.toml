@@ -18,6 +18,8 @@ path = "src/utils.rs"
 
 [dependencies]
 hbb_common = { path = "libs/hbb_common" }
+# 构建支持：cross/musl 环境无系统 OpenSSL，强制从源码编译
+openssl-sys = { version = "0.9", features = ["vendored"] }
 serde_derive = "1.0"
 serde = "1.0"
 serde_json = "1.0"
