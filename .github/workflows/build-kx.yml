@@ -28,9 +28,18 @@ jobs:
         # hbb_common >= kx-v2(229b9045) 删掉了 `pub use protos::message as message_proto;` 别名，
         # 而 rustdesk-server master 仍按旧别名引用。全仓仅 rendezvous_server.rs 一处。
         run: |
-          grep -rn "hbb_common::message_proto" src/ || true
           sed -i 's|hbb_common::message_proto|hbb_common::protos::message|g' src/rendezvous_server.rs
-          grep -rn "hbb_common::message_proto" src/ && echo "!! 仍有残留" || echo "OK 已全部替换"
+          grep -rn "hbb_common::message_proto" src/ && echo "!! 残留" || echo "OK 已替换"
+
+      - name: Pin ed25519 to 1.5.3
+        # sodiumoxide 0.2.7 要 ed25519 ^1。1.5.0/1.5.1/1.5.2 对 signature 的要求是
+        # ">=1.3.1"（开放式），cargo 会挑到 signature 2.2.0，而 Signature trait 在 2.x 已被移除
+        # -> E0405。1.5.3 起改成 "^1.3.1"，会自动收敛到 signature 1.x。
+        # 注意不能用 2.2.3：不满足 ^1。也不能直接降级 signature：链上有 crate 硬要 ^2.0,<2.3。
+        run: |
+          cargo generate-lockfile
+          cargo update -p ed25519 --precise 1.5.3
+          cargo tree -i ed25519 || true
 
       - name: Build
         env:
@@ -40,7 +49,7 @@ jobs:
           cargo build --release --target x86_64-unknown-linux-musl
 
       - name: Chmod
-        run: chmod -v a+x target/x86_64-unknown-linux-musl/release/hbbs target/x86_64-unknown-linux-musl/release/hbbr target/x86_64-unknown-linux-musl/release/rustdesk-utils
+        run: chmod -v a+x target/x86_64-unknown-linux-musl/release/hbbs target/x86_64-unknown-linux-musl/release/hbbr
 
       - name: Publish Artifacts
         uses: actions/upload-artifact@v4
