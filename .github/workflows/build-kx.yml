@@ -24,6 +24,14 @@ jobs:
           rustup default stable
           rustup target add x86_64-unknown-linux-musl
 
+      - name: Pin dependency versions
+        # ed25519 1.5.0 对 signature 的要求是 ">=1.3.1"（开放式），cargo 会挑到 2.2.0，
+        # 而 signature 2.x 移除了 Signature trait -> E0405。钉回 1.6.4。
+        run: |
+          cargo generate-lockfile
+          cargo update -p signature --precise 1.6.4
+          cargo tree -i signature || true
+
       - name: Build
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
