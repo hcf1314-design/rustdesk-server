@@ -24,22 +24,23 @@ jobs:
           rustup default stable
           rustup target add x86_64-unknown-linux-musl
 
-      - name: Compat patch for newer hbb_common
-        # hbb_common >= kx-v2(229b9045) 删掉了 `pub use protos::message as message_proto;` 别名，
-        # 而 rustdesk-server master 仍按旧别名引用。全仓仅 rendezvous_server.rs 一处。
+      - name: Compat patch for newer hbb_common (kx-v2 229b9045)
+        # 1) lib.rs 删掉了 `pub use protos::message as message_proto;` 别名
+        # 2) IdPk 从 message.proto 移到了 rendezvous.proto（message.proto 整体搬到 libs/base）
+        #    因此旧写法 hbb_common::message_proto::IdPk 应改为 rendezvous_proto::IdPk
+        # 全仓仅 src/rendezvous_server.rs 一处。
         run: |
-          sed -i 's|hbb_common::message_proto|hbb_common::protos::message|g' src/rendezvous_server.rs
+          sed -i 's|hbb_common::message_proto::IdPk|hbb_common::rendezvous_proto::IdPk|g' src/rendezvous_server.rs
           grep -rn "hbb_common::message_proto" src/ && echo "!! 残留" || echo "OK 已替换"
+          grep -n "rendezvous_proto::IdPk" src/rendezvous_server.rs
 
       - name: Pin ed25519 to 1.5.3
         # sodiumoxide 0.2.7 要 ed25519 ^1。1.5.0/1.5.1/1.5.2 对 signature 的要求是
         # ">=1.3.1"（开放式），cargo 会挑到 signature 2.2.0，而 Signature trait 在 2.x 已被移除
         # -> E0405。1.5.3 起改成 "^1.3.1"，会自动收敛到 signature 1.x。
-        # 注意不能用 2.2.3：不满足 ^1。也不能直接降级 signature：链上有 crate 硬要 ^2.0,<2.3。
         run: |
           cargo generate-lockfile
           cargo update -p ed25519 --precise 1.5.3
-          cargo tree -i ed25519 || true
 
       - name: Build
         env:
