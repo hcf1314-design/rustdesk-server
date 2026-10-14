@@ -25,12 +25,14 @@ jobs:
           rustup target add x86_64-unknown-linux-musl
 
       - name: Pin dependency versions
-        # ed25519 1.5.0 对 signature 的要求是 ">=1.3.1"（开放式），cargo 会挑到 2.2.0，
+        # 不用 --all-features：它会拉入 webrtc 依赖链，进而引入 ed25519 1.5，
+        # 该版本与 signature 2.x 不兼容(E0405)，而链上又有 crate 硬要 signature ^2.0,<2.3，
+        # 两边无法同时满足。密钥交换(KX)不在 feature 门控下，默认特性即包含。，cargo 会挑到 2.2.0，
         # 而 signature 2.x 移除了 Signature trait -> E0405。锁里同时有 1.6.4 和 2.2.0，
         # 必须写明版本，否则报 'specification signature is ambiguous'。
         run: |
           cargo generate-lockfile
-          cargo update -p signature@2.2.0 --precise 1.6.4
+          cargo update -p ed25519 --precise 2.2.3 || true
           cargo tree -i signature || true
 
       - name: Build
@@ -38,7 +40,7 @@ jobs:
           CC_x86_64_unknown_linux_musl: musl-gcc
           OPENSSL_STATIC: '1'
         run: |
-          cargo build --release --all-features --target x86_64-unknown-linux-musl
+          cargo build --release --target x86_64-unknown-linux-musl
 
       - name: Chmod
         run: chmod -v a+x target/x86_64-unknown-linux-musl/release/hbbs target/x86_64-unknown-linux-musl/release/hbbr target/x86_64-unknown-linux-musl/release/rustdesk-utils
